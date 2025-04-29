@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit tests / coverage reports
+.coverage
+.pytest_cache/
+
+# Environments
+.venv
+.vscode
+
+# mypy
+.mypy_cache/
+
+# JetBrain
+.idea
+
+# Example logs
+Logs/
+
