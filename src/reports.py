@@ -1,11 +1,13 @@
 import re
 
 from abc import abstractmethod, ABC
+from collections import defaultdict
+from multiprocessing import Pool, cpu_count
 
 
 class ReportTable(ABC):
-    def __init__(self, file_logs=None):
-        self.file_logs = file_logs
+    def __init__(self, log_files=None):
+        self.log_files = log_files
 
     @property
     @abstractmethod
@@ -24,8 +26,8 @@ class ReportTable(ABC):
 
 
 class HandlersReport(ReportTable):
-    def __init__(self, file_logs):
-        super().__init__(file_logs)
+    def __init__(self, log_files):
+        super().__init__(log_files)
         self.LVL = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         self.__table = []
         self.get_data_from_logs()
@@ -42,34 +44,42 @@ class HandlersReport(ReportTable):
     def table(self):
         return self.__table
 
+    def get_request_stats(self, log: str) -> dict[str, dict[str, int]]:
+        result = defaultdict(lambda: dict.fromkeys(self.LVL, 0))
+
+        try:
+            with (open(log, encoding='utf-8') as file):
+                for line in file:
+                    if 'django.request' not in line:
+                        continue
+
+                    match = re.search(r"\s(\w+)\s+django\.request:\s+.*?(/\S+)", line)
+                    if match:
+                        level, handler = match.groups()
+                        if level in self.LVL:
+                            result[handler][level] += 1
+
+        except Exception as e:
+            print(f"Ошибка при обработке файла {log}: {str(e)}")
+            return {}
+
+        return dict(result)
+
+    def merge_dicts(self, main_dict: dict[str, dict[str, int]],
+                    new_dict: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
+        merged = {**main_dict, **new_dict}
+        for key in main_dict.keys() & new_dict.keys():
+            merged[key] = {level: main_dict[key][level] + new_dict[key][level] for level in self.LVL}
+        return merged
+
     def get_data_from_logs(self) -> None:
-        report_dict: dict[str, dict[str, int]] = {}
-        for log in self.file_logs:
-            current_dict = {}
-            try:
-                with (open(log, encoding='utf-8') as file):
-                    for line in file:
-                        if 'django.request' in line:
-                            match_str = re.findall(r".+\s(\w+) django.request:?:.*?(/\S+)", line)
-                            if match_str:
-                                level, handler = match_str[0]
-                                if handler not in current_dict:
-                                    current_dict[handler] = dict.fromkeys(self.LVL, 0)
-                                current_dict[handler][level] += 1
-            except Exception:
-                raise
+        result_dict: dict[str, dict[str, int]] = {}
 
-            # Объединение словарей с суммированием значений
-            union_dict = {**report_dict, **current_dict}
-            for key in report_dict.keys() & current_dict.keys():
-                union_dict[key] = {l: report_dict[key][l] + current_dict[key][l] for l in self.LVL}
-            report_dict = {**union_dict}
+        with Pool(processes=min(cpu_count(), len(self.log_files))) as pool:
+            dict_list = pool.map(self.get_request_stats, self.log_files)
 
-        # Сортировка и преобразование в список
-        report_dict = dict(sorted(report_dict.items()))
-        report_list = [
-            [handler, *counts.values()]
-            for handler, counts in report_dict.items()
-        ]
+        for current_dict in dict_list:
+            result_dict = self.merge_dicts(result_dict, current_dict)
 
-        self.__table = report_list
+        sorted_items = sorted(result_dict.items())
+        self.__table = [[handler, *counts.values()] for handler, counts in sorted_items]
