@@ -86,9 +86,9 @@ class Report:
 
 class App:
     def __init__(self) -> None:
-        self.file_logs, self.report_name = parse_args()
-        check_files(self.file_logs)
-        Report(REPORTS[self.report_name](self.file_logs)).output()
+        self.log_files, self.report_name = parse_args()
+        check_files(self.log_files)
+        Report(REPORTS[self.report_name](self.log_files)).output()
 
 
 if __name__ == '__main__':
