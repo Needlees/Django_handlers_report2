@@ -1,7 +1,7 @@
 import pytest
 from contextlib import nullcontext as does_not_raise
 
-from src.main import Report, App, parse_args
+from src.main import Report, App, parse_args, check_files
 
 
 @pytest.mark.parametrize(
@@ -27,8 +27,17 @@ def test_parse_args(argv, res, expectation, monkeypatch):
         assert parse_args() == res
 
 
-def test_check_files(file_logs):
-    assert file_logs
+@pytest.mark.parametrize(
+    "args, expectation",
+    [
+        ([".\\Logs\\app1.log", ".\\Logs\\app2.log", ".\\Logs\\app3.log"], does_not_raise()),
+        (["..\\Logs\\app1.log", "..\\Logs\\app2.log", ".\\Logs\\app3.log"], pytest.raises(FileNotFoundError)),
+    ]
+)
+def test_check_files(args, expectation):
+    with expectation:
+        check_files(args)
+
 
 
 def test_report__get_column_widths(report_test):

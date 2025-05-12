@@ -31,9 +31,9 @@ def check_files(files: list[str]) -> None:
 
 class Report:
     def __init__(self, report_table: reports.ReportTable) -> None:
-        self.title = report_table.title
-        self.header = report_table.header
-        self.table = report_table.table
+        self.title: str = report_table.title
+        self.header: list[str] = report_table.header
+        self.table: list[list[str | int]] = report_table.table
 
         self.total_column: list[int] = self.__get_total_column()
         self.total_row: list[int] = self.__get_total_row()

@@ -18,3 +18,13 @@ def test_report_handler(report_handler):
     print()
     report = Report(report_handler)
     report.output()
+
+@pytest.mark.parametrize(
+    "log, res",
+    [
+        (".\\Logs\\app3.log", True),
+        ("", False),
+    ]
+)
+def test_handlers_report_get_request_stats(log, res):
+    assert (len(HandlersReport.get_request_stats(log)) > 0) == res

@@ -1,1 +1,2 @@
 # no dependencies, for testing only
+pytest~=8.3.5

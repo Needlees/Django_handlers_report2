@@ -4,6 +4,7 @@ from abc import abstractmethod, ABC
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 
+LVL = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 
 class ReportTable(ABC):
     def __init__(self, log_files=None):
@@ -28,7 +29,6 @@ class ReportTable(ABC):
 class HandlersReport(ReportTable):
     def __init__(self, log_files):
         super().__init__(log_files)
-        self.LVL = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         self.__table = []
         self.get_data_from_logs()
 
@@ -38,14 +38,15 @@ class HandlersReport(ReportTable):
 
     @property
     def header(self):
-        return ['HANDLER', *self.LVL]
+        return ['HANDLER', *LVL]
 
     @property
     def table(self):
         return self.__table
 
-    def get_request_stats(self, log: str) -> dict[str, dict[str, int]]:
-        result = defaultdict(lambda: dict.fromkeys(self.LVL, 0))
+    @staticmethod
+    def get_request_stats(log: str) -> dict[str, dict[str, int]]:
+        result: defaultdict = defaultdict(lambda: dict.fromkeys(LVL, 0))
 
         try:
             with (open(log, encoding='utf-8') as file):
@@ -56,7 +57,7 @@ class HandlersReport(ReportTable):
                     match = re.search(r"\s(\w+)\s+django\.request:\s+.*?(/\S+)", line)
                     if match:
                         level, handler = match.groups()
-                        if level in self.LVL:
+                        if level in LVL:
                             result[handler][level] += 1
 
         except Exception as e:
@@ -65,11 +66,12 @@ class HandlersReport(ReportTable):
 
         return dict(result)
 
-    def merge_dicts(self, main_dict: dict[str, dict[str, int]],
+    @staticmethod
+    def merge_dicts(main_dict: dict[str, dict[str, int]],
                     new_dict: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
         merged = {**main_dict, **new_dict}
         for key in main_dict.keys() & new_dict.keys():
-            merged[key] = {level: main_dict[key][level] + new_dict[key][level] for level in self.LVL}
+            merged[key] = {level: main_dict[key][level] + new_dict[key][level] for level in LVL}
         return merged
 
     def get_data_from_logs(self) -> None:
